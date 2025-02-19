@@ -1,0 +1,97 @@
+/*-
+ * #%L
+ * BroadleafCommerce Framework
+ * %%
+ * Copyright (C) 2009 - 2025 Broadleaf Commerce
+ * %%
+ * Licensed under the Broadleaf Fair Use License Agreement, Version 1.0
+ * (the "Fair Use License" located  at http://license.broadleafcommerce.org/fair_use_license-1.0.txt)
+ * unless the restrictions on use therein are violated and require payment to Broadleaf in which case
+ * the Broadleaf End User License Agreement (EULA), Version 1.1
+ * (the "Commercial License" located at http://license.broadleafcommerce.org/commercial_license-1.1.txt)
+ * shall apply.
+ * 
+ * Alternatively, the Commercial License may be replaced with a mutually agreed upon license (the "Custom License")
+ * between you and Broadleaf Commerce. You may not use this file except in compliance with the applicable license.
+ * #L%
+ */
+package org.broadleafcommerce.core.order.domain;
+
+import org.broadleafcommerce.core.order.domain.NullOrderFactoryImpl;
+import org.broadleafcommerce.core.order.domain.NullOrderImpl;
+import org.broadleafcommerce.core.order.domain.Order;
+import org.junit.Test;
+import static org.junit.Assert.*;
+
+
+public class NullOrderImplTest {
+    @Test
+    public void testNullOrderProperties() {
+        NullOrderImpl nullOrder = new NullOrderImpl();
+
+        assertNull(nullOrder.getId());
+        assertNull(nullOrder.getCustomer());
+        assertEquals(0, nullOrder.getItemCount());
+        assertFalse(nullOrder.hasCategoryItem("TestCategory"));
+        assertNull(nullOrder.getTotal());
+        assertEquals(0, nullOrder.getSubTotal().getAmount().intValue());
+    }
+
+    @Test
+    public void testNullOrderUnsupportedOperations() {
+        NullOrderImpl nullOrder = new NullOrderImpl();
+
+        try {
+            nullOrder.setId(1L);
+            fail("Expected UnsupportedOperationException");
+        } catch (UnsupportedOperationException e) {
+            // Expected
+        }
+
+        try {
+            nullOrder.setCustomer(null);
+            fail("Expected UnsupportedOperationException");
+        } catch (UnsupportedOperationException e) {
+            // Expected
+        }
+
+        try {
+            nullOrder.setSubTotal(null);
+            fail("Expected UnsupportedOperationException");
+        } catch (UnsupportedOperationException e) {
+            // Expected
+        }
+
+        try {
+            nullOrder.setTotal(null);
+            fail("Expected UnsupportedOperationException");
+        } catch (UnsupportedOperationException e) {
+            // Expected
+        }
+
+        try {
+            nullOrder.addOrderItem(null);
+            fail("Expected UnsupportedOperationException");
+        } catch (UnsupportedOperationException e) {
+            // Expected
+        }
+    }
+
+    @Test
+    public void testNullOrderDefaultValues() {
+        NullOrderImpl nullOrder = new NullOrderImpl();
+
+        assertNull(nullOrder.getStatus());
+        assertNull(nullOrder.getOrderNumber());
+        assertNull(nullOrder.getEmailAddress());
+        assertNull(nullOrder.getItemAdjustmentsValue());
+    }
+
+    @Test
+    public void testGetTotalAdjustmentsValue() {
+        NullOrderImpl nullOrder = new NullOrderImpl();
+        assertNull(nullOrder.getTotalAdjustmentsValue());
+    }
+}
+
+
