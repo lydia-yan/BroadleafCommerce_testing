@@ -26,4 +26,5 @@ jobs:
 
       - name: Build and Test (Skip OrderPaymentTest)
         run: |
-          mvn clean install -Dtest=!OrderPaymentTest
+          mvn clean install -Dsurefire.excludeTests=**/OrderPaymentTest.java
+    
