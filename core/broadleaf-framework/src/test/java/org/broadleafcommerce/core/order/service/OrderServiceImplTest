@@ -1,0 +1,237 @@
+/*-
+ * #%L
+ * BroadleafCommerce Framework
+ * %%
+ * Copyright (C) 2009 - 2025 Broadleaf Commerce
+ * %%
+ * Licensed under the Broadleaf Fair Use License Agreement, Version 1.0
+ * (the "Fair Use License" located  at http://license.broadleafcommerce.org/fair_use_license-1.0.txt)
+ * unless the restrictions on use therein are violated and require payment to Broadleaf in which case
+ * the Broadleaf End User License Agreement (EULA), Version 1.1
+ * (the "Commercial License" located at http://license.broadleafcommerce.org/commercial_license-1.1.txt)
+ * shall apply.
+ * 
+ * Alternatively, the Commercial License may be replaced with a mutually agreed upon license (the "Custom License")
+ * between you and Broadleaf Commerce. You may not use this file except in compliance with the applicable license.
+ * #L%
+ */
+package org.broadleafcommerce.core.order.service;
+
+
+import static org.junit.jupiter.api.Assertions.*;
+
+import org.broadleafcommerce.core.order.dao.OrderDao;
+import org.broadleafcommerce.core.order.domain.Order;
+import org.broadleafcommerce.core.order.domain.OrderImpl;
+import org.broadleafcommerce.core.order.service.type.OrderStatus;
+import org.broadleafcommerce.core.payment.domain.OrderPayment;
+import org.broadleafcommerce.core.payment.domain.secure.Referenced;
+import org.broadleafcommerce.core.payment.service.SecureOrderPaymentService;
+import org.broadleafcommerce.profile.core.domain.Customer;
+import org.broadleafcommerce.profile.core.domain.CustomerImpl;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import static org.mockito.Mockito.*;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import static org.mockito.Mockito.doNothing;
+
+import java.util.ArrayList;
+import java.util.List;
+import org.broadleafcommerce.profile.core.service.CustomerService;
+
+public class OrderServiceImplTest {
+    @InjectMocks
+    private OrderServiceImpl orderService;
+
+    @Mock
+    private OrderDao orderDao;
+
+    @Mock
+    private CustomerService customerService;
+
+    @Mock
+    private SecureOrderPaymentService securePaymentInfoService;
+
+    @BeforeEach
+    void setUp() {
+        MockitoAnnotations.openMocks(this);
+        when(customerService.saveCustomer(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+    }
+
+    @Test
+    void testFindOrderById_OrderExists() {
+        Long orderId = 1L;
+        Order mockOrder = new OrderImpl();
+        mockOrder.setId(orderId);
+
+        when(orderDao.readOrderById(orderId)).thenReturn(mockOrder);
+        Order result = orderService.findOrderById(orderId);
+
+        assertNotNull(result);
+        assertEquals(orderId, result.getId());
+        verify(orderDao, times(1)).readOrderById(orderId);
+    }
+
+    @Test
+    void testFindOrderById_OrderNotExists() {
+        Long orderId = 1L;
+        when(orderDao.readOrderById(orderId)).thenReturn(null);
+        Order result = orderService.findOrderById(orderId);
+
+        assertNull(result);
+        verify(orderDao, times(1)).readOrderById(orderId);
+    }
+
+    @Test
+    void testFindOrdersForCustomer() {
+        Long customerId = 1L;
+        Customer mockCustomer = mock(Customer.class);
+        when(mockCustomer.getId()).thenReturn(customerId);
+        List<Order> mockOrders = new ArrayList<>();
+        mockOrders.add(new OrderImpl());
+        mockOrders.add(new OrderImpl());
+
+        when(orderDao.readOrdersForCustomer(customerId)).thenReturn(mockOrders);
+        List<Order> result = orderService.findOrdersForCustomer(mockCustomer);
+
+        assertNotNull(result);
+        assertEquals(2, result.size());
+        verify(orderDao, times(1)).readOrdersForCustomer(customerId);
+    }
+
+    @Test
+    void testFindOrdersForCustomerByStatus() {
+        Customer mockCustomer = new CustomerImpl();
+        OrderStatus status = OrderStatus.SUBMITTED;
+
+        List<Order> mockOrders = new ArrayList<>();
+        Order order1 = new OrderImpl();
+        order1.setId(1L);
+        Order order2 = new OrderImpl();
+        order2.setId(2L);
+        mockOrders.add(order1);
+        mockOrders.add(order2);
+
+        when(orderDao.readOrdersForCustomer(mockCustomer, status)).thenReturn(mockOrders);
+        List<Order> result = orderService.findOrdersForCustomer(mockCustomer, status);
+
+        assertNotNull(result);
+        assertEquals(2, result.size());
+        verify(orderDao, times(1)).readOrdersForCustomer(mockCustomer, status);
+    }
+
+    @Test
+    void testCreateNamedOrderForCustomer() {
+        Customer mockCustomer = mock(Customer.class);
+        String orderName = "TestOrder";
+        Order mockOrder = new OrderImpl();
+        mockOrder.setName(orderName);
+        mockOrder.setCustomer(mockCustomer);
+        mockOrder.setStatus(OrderStatus.NAMED);
+
+        when(orderDao.create()).thenReturn(mockOrder);
+        //mock persist()
+        when(orderDao.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        //execute createNamedOrderForCustomer
+        Order result = orderService.createNamedOrderForCustomer(orderName, mockCustomer);
+
+        assertNotNull(result);
+        assertEquals(orderName, result.getName());
+        assertEquals(mockCustomer, result.getCustomer());
+        assertEquals(OrderStatus.NAMED, result.getStatus());
+        verify(orderDao, times(1)).create();
+        //verify persist() (save) is called once
+        verify(orderDao, times(1)).save(mockOrder);
+    }
+
+    @Test
+    void testReadNumberOfOrders() {
+        Long mockOrderCount = 10L;
+        when(orderDao.readNumberOfOrders()).thenReturn(mockOrderCount);
+        Long result = orderService.readNumberOfOrders();
+
+        assertNotNull(result);
+        assertEquals(mockOrderCount, result);
+        verify(orderDao, times(1)).readNumberOfOrders();
+    }
+
+    @Test
+    void testRefreshOrder() {
+        Order mockOrder = new OrderImpl();
+        doNothing().when(orderDao).refresh(mockOrder);
+        orderService.refresh(mockOrder);
+        verify(orderDao, times(1)).refresh(mockOrder);
+    }
+
+    @Test
+    void testAcquireLock() {
+        Order mockOrder = new OrderImpl();
+        when(orderDao.acquireLock(mockOrder)).thenReturn(true);
+        boolean result = orderService.acquireLock(mockOrder);
+
+        assertTrue(result);
+        verify(orderDao, times(1)).acquireLock(mockOrder);
+    }
+
+    @Test
+    void testReleaseLock() {
+        Order mockOrder = new OrderImpl();
+        when(orderDao.releaseLock(mockOrder)).thenReturn(true);
+        boolean result = orderService.releaseLock(mockOrder);
+
+        assertTrue(result);
+        verify(orderDao, times(1)).releaseLock(mockOrder);
+    }
+
+    @Test
+    void testCreateNewCartForCustomer() {
+        Customer mockCustomer = mock(Customer.class);
+        Order mockOrder = new OrderImpl();
+        when(orderDao.createNewCartForCustomer(mockCustomer)).thenReturn(mockOrder);
+        Order result = orderService.createNewCartForCustomer(mockCustomer);
+
+        assertNotNull(result);
+        verify(orderDao, times(1)).createNewCartForCustomer(mockCustomer);
+    }
+
+    @Test
+    void testFindCartForCustomer() {
+        Customer mockCustomer = mock(Customer.class);
+        Order mockOrder = new OrderImpl();
+        when(orderDao.readCartForCustomer(mockCustomer)).thenReturn(mockOrder);
+        Order result = orderService.findCartForCustomer(mockCustomer);
+
+        assertNotNull(result);
+        assertEquals(mockOrder, result);
+        verify(orderDao, times(1)).readCartForCustomer(mockCustomer);
+    }
+
+    @Test
+    void testAddPaymentToOrder_WithSecurePaymentInfo() {
+
+        Order mockOrder = new OrderImpl();
+        List<OrderPayment> paymentList = new ArrayList<>();
+        mockOrder.setPayments(paymentList);
+
+        OrderPayment mockPayment = mock(OrderPayment.class);
+        when(mockPayment.getOrder()).thenReturn(mockOrder);
+
+        //mock a secure payment info
+        Referenced mockSecurePaymentInfo = mock(Referenced.class);
+        //mock persist method to return the same order
+
+        when(orderDao.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        //execute the addPaymentToOrder
+        OrderPayment result = orderService.addPaymentToOrder(mockOrder, mockPayment, mockSecurePaymentInfo);
+
+        assertNotNull(result);
+        assertEquals(mockOrder, result.getOrder());
+        assertTrue(mockOrder.getPayments().contains(result));
+        verify(securePaymentInfoService, times(1)).save(mockSecurePaymentInfo);
+        verify(orderDao, times(1)).save(mockOrder);
+    }
+}
